@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flores Amarillas para Jenny 🌻</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Great+Vibes&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #EFECE6;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        .font-serif-title {
+            font-family: 'Cinzel', serif;
+            letter-spacing: 0.05em;
+        }
+
+        .font-script {
+            font-family: 'Great Vibes', cursive;
+        }
+
+        @keyframes pulse-grow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .pulse-target {
+            animation: pulse-grow 2s ease-in-out infinite;
+        }
+
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 0.7s infinite;
+            color: #d97706;
+            font-weight: bold;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen w-full bg-[#EFECE6] text-gray-800 relative flex flex-col items-center justify-center min-h-[100dvh]">
+
+    <div id="start-overlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#EFECE6] transition-opacity duration-1000 cursor-pointer p-4">
+        <div class="relative flex flex-col sm:flex-row items-center justify-center gap-4 max-w-full" id="click-trigger">
+            <div class="pulse-target relative flex-shrink-0">
+                <canvas id="startFlowerCanvas" width="180" height="180"></canvas>
+            </div>
+
+            <div class="flex items-center pointer-events-none whitespace-nowrap">
+                <div class="hidden sm:block w-12 h-[2px] bg-black"></div>
+                <div class="hidden sm:block w-2 h-2 rounded-full bg-black -ml-1"></div>
+                <span class="sm:ml-2 text-black font-semibold text-base sm:text-lg tracking-wide border-b border-black pb-0.5">Click Aquí</span>
+            </div>
+        </div>
+    </div>
+
+    <main class="w-full max-w-2xl mx-auto flex flex-col items-center justify-center p-4 space-y-6 relative z-10 text-center my-auto">
+        
+        <div class="w-full flex flex-col justify-center items-center z-20">
+            <div id="text-letter" class="w-full max-w-lg space-y-4 flex flex-col items-center">
+                
+                <div class="flex items-center justify-center space-x-2 text-gray-900 font-serif-title font-bold text-base md:text-xl tracking-wide min-h-[32px]">
+                    <span id="title-icon-left" class="opacity-0 transition-opacity duration-500">🌻</span>
+                    <h2 id="type-title" class="text-center"></h2>
+                    <span id="title-icon-right" class="opacity-0 transition-opacity duration-500">🌻</span>
+                </div>
+
+                <div class="font-serif-title text-gray-800 text-xs md:text-sm leading-relaxed space-y-2 font-bold tracking-wider min-h-[100px] text-center">
+                    <p id="type-p1"></p>
+                    <p id="type-p2"></p>
+                    <p id="type-p3"></p>
+                </div>
+
+                <div id="footer-border" class="pt-3 border-t border-gray-400/0 transition-colors duration-700 w-full flex justify-center">
+                    <p id="type-script" class="font-script text-2xl md:text-3xl text-amber-900 font-medium min-h-[40px] text-center"></p>
+                </div>
+
+                <div class="pt-1">
+                    <button id="btn-restart" class="opacity-0 pointer-events-none transition-opacity duration-700 px-5 py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold rounded-full shadow-md text-xs flex items-center space-x-2 mx-auto">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        <span>Volver a florecer</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full h-[380px] md:h-[450px] relative flex items-center justify-center">
+            <canvas id="mainCanvas" class="w-full h-full object-contain pointer-events-none mx-auto"></canvas>
+        </div>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const startCanvas = document.getElementById('startFlowerCanvas');
+        const startCtx = startCanvas.getContext('2d');
+
+        const startOverlay = document.getElementById('start-overlay');
+        const clickTrigger = document.getElementById('click-trigger');
+        const btnRestart = document.getElementById('btn-restart');
+
+        // Text Elements
+        const elTitle = document.getElementById('type-title');
+        const elP1 = document.getElementById('type-p1');
+        const elP2 = document.getElementById('type-p2');
+        const elP3 = document.getElementById('type-p3');
+        const elScript = document.getElementById('type-script');
+        const iconLeft = document.getElementById('title-icon-left');
+        const iconRight = document.getElementById('title-icon-right');
+        const footerBorder = document.getElementById('footer-border');
+
+        let animFrame;
+        let isStarted = false;
+        let startTime = null;
+        let particles = [];
+        let sunflowerHeartPoints = [];
+        let branchStructure = [];
+        let seedProgress = 0;
+        let isTypingStarted = false;
+
+        function setupCanvasSize() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+
+        function animateStartFlowerSeed() {
+            if (isStarted) return;
+            seedProgress = Math.min(1, seedProgress + 0.02);
+
+            const cx = startCanvas.width / 2;
+            const cy = startCanvas.height / 2;
+            const targetRadius = 35;
+            const currentRadius = targetRadius * Math.max(0.2, seedProgress);
+
+            startCtx.clearRect(0, 0, startCanvas.width, startCanvas.height);
+
+            const petalCount = 20;
+            startCtx.fillStyle = '#FBBF24';
+            const petalLen = 20 * seedProgress;
+            const petalW = 8 * seedProgress;
+
+            if (seedProgress > 0.2) {
+                for (let i = 0; i < petalCount; i++) {
+                    const angle = (i * Math.PI * 2) / petalCount;
+                    startCtx.save();
+                    startCtx.translate(cx, cy);
+                    startCtx.rotate(angle);
+                    startCtx.beginPath();
+                    startCtx.ellipse(0, -currentRadius - (petalLen * 0.6), petalW, petalLen, 0, 0, Math.PI * 2);
+                    startCtx.fill();
+                    startCtx.restore();
+                }
+            }
+
+            startCtx.fillStyle = '#3A1E05';
+            startCtx.beginPath();
+            startCtx.arc(cx, cy, currentRadius, 0, Math.PI * 2);
+            startCtx.fill();
+
+            if (seedProgress > 0.4) {
+                startCtx.fillStyle = '#653813';
+                for (let r = 4; r < currentRadius - 2; r += 5) {
+                    for (let a = 0; a < Math.PI * 2; a += 0.6) {
+                        const x = cx + Math.cos(a) * r;
+                        const y = cy + Math.sin(a) * r;
+                        startCtx.fillRect(x, y, 2, 2);
+                    }
+                }
+            }
+
+            if (seedProgress < 1 && !isStarted) {
+                requestAnimationFrame(animateStartFlowerSeed);
+            }
+        }
+
+        function generateBranches(w, h) {
+            branchStructure = [];
+            const baseY = h * 0.88;
+            const centerX = w * 0.5;
+            const trunkHeight = h * 0.45;
+
+            branchStructure.push({
+                startX: centerX, startY: baseY,
+                cp1X: centerX + 3, cp1Y: baseY - trunkHeight * 0.35,
+                cp2X: centerX - 2, cp2Y: baseY - trunkHeight * 0.65,
+                endX: centerX, endY: baseY - trunkHeight * 0.75,
+                startWidth: 10, endWidth: 4,
+                startTime: 0, endTime: 0.32
+            });
+
+            const branches = [
+                { startX: centerX, startY: baseY - trunkHeight * 0.25, cp1X: centerX - 15, cp1Y: baseY - trunkHeight * 0.28, cp2X: centerX - 30, cp2Y: baseY - trunkHeight * 0.3, endX: centerX - 40, endY: baseY - trunkHeight * 0.32, startWidth: 5, endWidth: 2, startTime: 0.1, endTime: 0.34 },
+                { startX: centerX, startY: baseY - trunkHeight * 0.28, cp1X: centerX + 15, cp1Y: baseY - trunkHeight * 0.31, cp2X: centerX + 30, cp2Y: baseY - trunkHeight * 0.33, endX: centerX + 40, endY: baseY - trunkHeight * 0.35, startWidth: 5, endWidth: 2, startTime: 0.12, endTime: 0.36 },
+                { startX: centerX, startY: baseY - trunkHeight * 0.45, cp1X: centerX - 20, cp1Y: baseY - trunkHeight * 0.5, cp2X: centerX - 35, cp2Y: baseY - trunkHeight * 0.53, endX: centerX - 45, endY: baseY - trunkHeight * 0.56, startWidth: 4, endWidth: 2, startTime: 0.18, endTime: 0.42 },
+                { startX: centerX, startY: baseY - trunkHeight * 0.48, cp1X: centerX + 20, cp1Y: baseY - trunkHeight * 0.52, cp2X: centerX + 35, cp2Y: baseY - trunkHeight * 0.55, endX: centerX + 45, endY: baseY - trunkHeight * 0.58, startWidth: 4, endWidth: 2, startTime: 0.2, endTime: 0.44 },
+                { startX: centerX, startY: baseY - trunkHeight * 0.68, cp1X: centerX - 12, cp1Y: baseY - trunkHeight * 0.74, cp2X: centerX - 22, cp2Y: baseY - trunkHeight * 0.78, endX: centerX - 30, endY: baseY - trunkHeight * 0.82, startWidth: 3, endWidth: 1.5, startTime: 0.26, endTime: 0.48 },
+                { startX: centerX, startY: baseY - trunkHeight * 0.68, cp1X: centerX + 12, cp1Y: baseY - trunkHeight * 0.74, cp2X: centerX + 22, cp2Y: baseY - trunkHeight * 0.78, endX: centerX + 30, endY: baseY - trunkHeight * 0.82, startWidth: 3, endWidth: 1.5, startTime: 0.28, endTime: 0.5 }
+            ];
+
+            branchStructure.push(...branches);
+        }
+
+        function heartPoint(t) {
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+            return { x: x / 16, y: y / 16 };
+        }
+
+        function drawSunflower(x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            const petals = 12;
+            const petalLength = size * 0.85;
+            const petalWidth = size * 0.35;
+
+            ctx.fillStyle = '#F59E0B';
+            for (let i = 0; i < petals; i++) {
+                const angle = (i * Math.PI * 2) / petals;
+                ctx.rotate(angle);
+                ctx.beginPath();
+                ctx.ellipse(0, -petalLength, petalWidth, petalLength, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#FCD34D';
+            for (let i = 0; i < petals; i++) {
+                const angle = (i * Math.PI * 2) / petals + (Math.PI / petals);
+                ctx.rotate(angle);
+                ctx.beginPath();
+                ctx.ellipse(0, -petalLength * 0.75, petalWidth * 0.75, petalLength * 0.75, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const centerR = size * 0.4;
+            ctx.fillStyle = '#291405';
+            ctx.beginPath();
+            ctx.arc(0, 0, centerR, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function generateSunflowerHeart(width, height) {
+            sunflowerHeartPoints = [];
+            const count = 450; // Se incrementó la cantidad de flores para rellenar los espacios
+            const scale = Math.min(width, height) * 0.34;
+            const centerX = width * 0.5;
+            const centerY = height * 0.38;
+
+            for (let i = 0; i < count; i++) {
+                const t = Math.random() * Math.PI * 2;
+                // Distribución uniforme para cubrir todo el interior sin dejar zonas en blanco
+                const r = Math.sqrt(Math.random());
+                const hp = heartPoint(t);
+
+                sunflowerHeartPoints.push({
+                    x: centerX + hp.x * scale * r,
+                    y: centerY + hp.y * scale * r,
+                    size: Math.random() * 3 + 7.5,
+                    delay: 0.35 + (1 - r) * 0.3 + Math.random() * 0.2
+                });
+            }
+
+            sunflowerHeartPoints.sort((a, b) => a.delay - b.delay);
+        }
+
+        class FloatingParticle {
+            constructor(w, h) { this.reset(w, h); }
+
+            reset(w, h) {
+                this.x = Math.random() * w;
+                this.y = -20 - Math.random() * 80;
+                this.size = Math.random() * 3 + 3;
+                this.speedY = Math.random() * 1.2 + 0.6;
+                this.speedX = Math.sin(Math.random() * Math.PI) * 0.8 - 0.4;
+                this.isFullFlower = Math.random() < 0.2;
+                this.opacity = Math.random() * 0.7 + 0.3;
+            }
+
+            update(w, h) {
+                this.y += this.speedY;
+                this.x += Math.sin(this.y * 0.02) * 0.6 + this.speedX;
+                if (this.y > h + 20) this.reset(w, h);
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.opacity;
+                if (this.isFullFlower) {
+                    drawSunflower(this.x, this.y, this.size);
+                } else {
+                    ctx.fillStyle = '#FBBF24';
+                    ctx.beginPath();
+                    ctx.ellipse(this.x, this.y, this.size, this.size * 0.5, Math.PI / 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        function initParticles(w, h) {
+            particles = [];
+            for (let i = 0; i < 22; i++) {
+                particles.push(new FloatingParticle(w, h));
+            }
+        }
+
+        function drawBezierBranch(b, progress) {
+            if (progress < b.startTime) return;
+            const localP = Math.min(1, (progress - b.startTime) / (b.endTime - b.startTime));
+
+            ctx.strokeStyle = '#0D5C50';
+            ctx.fillStyle = '#0D5C50';
+            ctx.lineCap = 'round';
+
+            const steps = 25;
+            const currentStep = Math.floor(steps * localP);
+
+            for (let i = 1; i <= currentStep; i++) {
+                const t1 = (i - 1) / steps;
+                const t2 = i / steps;
+
+                const x1 = Math.pow(1 - t1, 3) * b.startX + 3 * Math.pow(1 - t1, 2) * t1 * b.cp1X + 3 * (1 - t1) * Math.pow(t1, 2) * b.cp2X + Math.pow(t1, 3) * b.endX;
+                const y1 = Math.pow(1 - t1, 3) * b.startY + 3 * Math.pow(1 - t1, 2) * t1 * b.cp1Y + 3 * (1 - t1) * Math.pow(t1, 2) * b.cp2Y + Math.pow(t1, 3) * b.endY;
+
+                const x2 = Math.pow(1 - t2, 3) * b.startX + 3 * Math.pow(1 - t2, 2) * t2 * b.cp1X + 3 * (1 - t2) * Math.pow(t2, 2) * b.cp2X + Math.pow(t2, 3) * b.endX;
+                const y2 = Math.pow(1 - t2, 3) * b.startY + 3 * Math.pow(1 - t2, 2) * t2 * b.cp1Y + 3 * (1 - t2) * Math.pow(t2, 2) * b.cp2Y + Math.pow(t2, 3) * b.endY;
+
+                const w1 = b.startWidth - (b.startWidth - b.endWidth) * t1;
+                const w2 = b.startWidth - (b.startWidth - b.endWidth) * t2;
+
+                ctx.lineWidth = (w1 + w2) / 2;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+        }
+
+        async function typeWriterText(targetEl, text, speed = 35) {
+            targetEl.classList.add('typing-cursor');
+            for (let i = 0; i < text.length; i++) {
+                targetEl.textContent += text.charAt(i);
+                await new Promise(r => setTimeout(r, speed));
+            }
+            targetEl.classList.remove('typing-cursor');
+        }
+
+        async function startLetterTyping() {
+            if (isTypingStarted) return;
+            isTypingStarted = true;
+
+            elTitle.textContent = "";
+            elP1.textContent = "";
+            elP2.textContent = "";
+            elP3.textContent = "";
+            elScript.textContent = "";
+
+            iconLeft.classList.remove('opacity-0');
+            await typeWriterText(elTitle, "FELIZ DÍA DE LAS FLORES AMARILLAS", 20);
+            iconRight.classList.remove('opacity-0');
+            await new Promise(r => setTimeout(r, 200));
+
+            await typeWriterText(elP1, "CADA GIRASOL QUE VES AQUÍ ES UN LATIDO DE MI CORAZÓN.", 20);
+            await new Promise(r => setTimeout(r, 150));
+
+            await typeWriterText(elP2, "ASÍ COMO EL SOL ILUMINA LOS CAMPOS, TÚ ILUMINAS MI VIDA.", 20);
+            await new Promise(r => setTimeout(r, 150));
+
+            await typeWriterText(elP3, "QUE ESTAS FLORES TE RECUERDEN LO ESPECIAL QUE ERES PARA MÍ.", 20);
+            await new Promise(r => setTimeout(r, 250));
+
+            footerBorder.classList.remove('border-gray-400/0');
+            footerBorder.classList.add('border-gray-400/50');
+            await typeWriterText(elScript, "Eres el sol que hace florecer cada buena parte de los demas, Jenny ❤️", 20);
+
+            btnRestart.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function animate(timestamp) {
+            if (!startTime) startTime = timestamp;
+            const elapsed = timestamp - startTime;
+            const duration = 5200;
+
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const progress = Math.min(1, elapsed / duration);
+
+            const baseY = h * 0.88;
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.1, baseY);
+            ctx.lineTo(w * 0.9, baseY);
+            ctx.stroke();
+
+            branchStructure.forEach(b => drawBezierBranch(b, progress));
+
+            sunflowerHeartPoints.forEach(pt => {
+                if (progress > pt.delay) {
+                    const bloomP = Math.min(1, (progress - pt.delay) * 3.5);
+                    drawSunflower(pt.x, pt.y, pt.size * bloomP);
+                }
+            });
+
+            particles.forEach(p => {
+                p.update(w, h);
+                p.draw(ctx);
+            });
+
+            if (progress >= 0.42) {
+                startLetterTyping();
+            }
+
+            if (progress < 1) {
+                animFrame = requestAnimationFrame(animate);
+            } else {
+                animFrame = requestAnimationFrame(loopStatic);
+            }
+        }
+
+        function loopStatic() {
+            const rect = canvas.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const baseY = h * 0.88;
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.1, baseY);
+            ctx.lineTo(w * 0.9, baseY);
+            ctx.stroke();
+
+            branchStructure.forEach(b => drawBezierBranch(b, 1));
+
+            sunflowerHeartPoints.forEach(pt => {
+                drawSunflower(pt.x, pt.y, pt.size);
+            });
+
+            particles.forEach(p => {
+                p.update(w, h);
+                p.draw(ctx);
+            });
+
+            animFrame = requestAnimationFrame(loopStatic);
+        }
+
+        function startExperience() {
+            startOverlay.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                startOverlay.style.display = 'none';
+            }, 1000);
+
+            setupCanvasSize();
+            const rect = canvas.getBoundingClientRect();
+            generateBranches(rect.width, rect.height);
+            generateSunflowerHeart(rect.width, rect.height);
+            initParticles(rect.width, rect.height);
+
+            startTime = null;
+            cancelAnimationFrame(animFrame);
+            animFrame = requestAnimationFrame(animate);
+        }
+
+        function restartExperience() {
+            isTypingStarted = false;
+            btnRestart.classList.add('opacity-0', 'pointer-events-none');
+            iconLeft.classList.add('opacity-0');
+            iconRight.classList.add('opacity-0');
+            footerBorder.classList.remove('border-gray-400/50');
+            footerBorder.classList.add('border-gray-400/0');
+
+            elTitle.textContent = "";
+            elP1.textContent = "";
+            elP2.textContent = "";
+            elP3.textContent = "";
+            elScript.textContent = "";
+
+            cancelAnimationFrame(animFrame);
+            setTimeout(() => {
+                setupCanvasSize();
+                const rect = canvas.getBoundingClientRect();
+                generateBranches(rect.width, rect.height);
+                generateSunflowerHeart(rect.width, rect.height);
+                startTime = null;
+                animFrame = requestAnimationFrame(animate);
+            }, 300);
+        }
+
+        window.addEventListener('load', () => {
+            setupCanvasSize();
+            requestAnimationFrame(animateStartFlowerSeed);
+        });
+
+        window.addEventListener('resize', () => {
+            setupCanvasSize();
+            if (isStarted) {
+                const rect = canvas.getBoundingClientRect();
+                generateBranches(rect.width, rect.height);
+                generateSunflowerHeart(rect.width, rect.height);
+            }
+        });
+
+        clickTrigger.addEventListener('click', () => {
+            isStarted = true;
+            startExperience();
+        });
+
+        btnRestart.addEventListener('click', restartExperience);
+    </script>
+</body>
+</html>
